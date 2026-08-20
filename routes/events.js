@@ -4,15 +4,19 @@ const router = express.Router();
 
 /**
  * Ingest a new event into the tracking system.
- * This logs the raw event data and associates it with a user and session.
+ * Writes stay on the primary so the event is durable before the API responds.
  */
 router.post('/', async (req, res) => {
-  const { user_id, session_id, event_type, properties } = req.body;
-  
+  const { user_id, session_id, event_type, properties = {} } = req.body;
+
+  if (!user_id || !event_type) {
+    return res.status(400).json({ error: 'user_id and event_type are required' });
+  }
+
   try {
     const result = await db.query(
       'INSERT INTO events (user_id, session_id, event_type, properties) VALUES ($1, $2, $3, $4) RETURNING *',
-      [user_id, session_id, event_type, properties]
+      [user_id, session_id || null, event_type, properties]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -23,7 +27,7 @@ router.post('/', async (req, res) => {
 
 /**
  * Retrieve the most recent events for a specific user.
- * Used in the dashboard to show a user's recent activity stream.
+ * This is a dashboard read and is intentionally isolated on the replica.
  */
 router.get('/', async (req, res) => {
   const { user_id } = req.query;
@@ -33,8 +37,9 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // Fetch top 100 events ordered by timestamp for the specific user
-    const result = await db.query(
+    // The partition-local (user_id, created_at DESC) index supports this
+    // equality + ordering + LIMIT pattern without a broad event-table scan.
+    const result = await db.readQuery(
       'SELECT * FROM events WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100',
       [user_id]
     );
