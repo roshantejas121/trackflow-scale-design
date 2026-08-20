@@ -8,6 +8,8 @@ TrackFlow is a high-performance event tracking and analytics API designed for ea
 
 The application is designed to run as a Node.js web service with PostgreSQL. Set the deployed service's `PRIMARY_DB_URL` and `REPLICA_DB_URL` environment variables. For the assignment demo, both variables may point to the same PostgreSQL database; the application still exercises the primary/replica routing code paths.
 
+**Video explanation:** [TrackFlow scale design demo](https://drive.google.com/file/d/1VoSQq2LUE29KlfsJrZgvJCFue4MyNqGf/view?usp=sharing) (Google Drive: anyone with the link can view)
+
 ## Getting Started
 
 ### Prerequisites
